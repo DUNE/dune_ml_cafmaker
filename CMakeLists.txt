@@ -1,84 +1,103 @@
 cmake_minimum_required(VERSION 3.12)
 set(CMAKE_CXX_STANDARD 20)
 
-project(sbn_ml_cafmaker)
 
-find_package(HDF5 REQUIRED COMPONENTS C CXX HL CONFIG PATHS ${HDF5_INSTALL}/)
-find_package(sbnanaobj)
-find_package(ZLIB)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+	  message(STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
+	    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the type of build." FORCE)
+	      
+	      # Set the possible values for cmake-gui drop-down
+	        set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+	endif()
+
+
+# Force the old ABI to match common experiment-built libraries (like those in UPS/Spack)
+add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+
+project(dune_ml_cafmaker)
+
+# Robust HDF5 detection
+if(HDF5_INSTALL)
+  set(HDF5_ROOT ${HDF5_INSTALL})
+  set(HDF5_DIR ${HDF5_INSTALL})
+endif()
+
+# Explicitly request CXX and HL components
+find_package(HDF5 REQUIRED COMPONENTS C CXX HL)
+
+# Handle the case where HDF5_INCLUDE_DIRS is empty (common in CONFIG mode)
+if("${HDF5_INCLUDE_DIRS}" STREQUAL "")
+  get_filename_component(_HDF5_BASE "${HDF5_DIR}/../../../../" ABSOLUTE)
+  if(NOT EXISTS "${_HDF5_BASE}/include/H5Cpp.h")
+    get_filename_component(_HDF5_BASE "${HDF5_DIR}/../../../" ABSOLUTE)
+  endif()
+  if(EXISTS "${_HDF5_BASE}/include/H5Cpp.h")
+    set(HDF5_INCLUDE_DIRS "${_HDF5_BASE}/include")
+  endif()
+endif()
+
+# Ensure we have the C++ and HL libraries
+if(TARGET hdf5::hdf5_cpp-shared)
+    set(HDF5_LIBRARIES hdf5::hdf5_cpp-shared hdf5::hdf5_hl_cpp-shared hdf5::hdf5-shared)
+elseif(TARGET hdf5::hdf5_cpp-static)
+    set(HDF5_LIBRARIES hdf5::hdf5_cpp-static hdf5::hdf5_hl_cpp-static hdf5::hdf5-static)
+endif()
+
+# Debugging info
+message(STATUS "HDF5 Found: ${HDF5_FOUND}")
+message(STATUS "HDF5 Include Dirs: ${HDF5_INCLUDE_DIRS}")
+message(STATUS "HDF5 Libraries: ${HDF5_LIBRARIES}")
+
+find_package(duneanaobj REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(ROOT REQUIRED)
 
-set(SBNANAOBJ_INCLUDE_DIRS "$ENV{SBNANAOBJ_INC}" CACHE INTERNAL "")
-
-set(HDF5_INCLUDE_DIR ${HDF5_INSTALL}/include/)
-file(GLOB HDF5_LIBRARIES ${HDF5_INSTALL}/lib/*.so)
-include_directories(include)
 file(GLOB SPINE_SOURCES src/*.cc)
 
-# The input HDF5 files for data do not have truth products in them, so the
-# same top-level "dlp::types::Event" class should not contain references to
-# them when handling events from data. This is accomplished by means of a
-# preprocessor flag that checks if "MC_NOT_DATA" is defined and allows for
-# truth products to be defined if it is. Two separate libraries are therefore
-# built and linked against.
+# Helper function to ensure all includes and libraries are correctly attached to targets
+function(link_dlp_dependencies target_name)
+    target_include_directories(${target_name} PUBLIC 
+        include 
+        ${HDF5_INCLUDE_DIRS} 
+        ${ROOT_INCLUDE_DIRS}
+    )
+    target_link_libraries(${target_name} PRIVATE 
+        ${HDF5_LIBRARIES} 
+        ZLIB::ZLIB 
+        duneanaobj::StandardRecord
+    )
+endfunction()
+
+# Libraries
 add_library(dlp_simulation SHARED ${SPINE_SOURCES})
-target_link_libraries(dlp_simulation PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB)
-target_include_directories(dlp_simulation PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+link_dlp_dependencies(dlp_simulation)
 target_compile_definitions(dlp_simulation PRIVATE MC_NOT_DATA)
 
 add_library(dlp_data SHARED ${SPINE_SOURCES})
-target_link_libraries(dlp_data PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB)
-target_include_directories(dlp_data PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+link_dlp_dependencies(dlp_data)
 
-# This executable is meant for testing the HDF5 parsing capabilities of the
-# library. It simply connects to the input file and attempts to read the
-# contents of the first/passed event.
-add_executable(test_hdf5 test_hdf5.cc)
-target_link_libraries(test_hdf5 PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_simulation ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(test_hdf5 PRIVATE ${HDF5_INCLUDE_DIR})
-target_compile_definitions(test_hdf5 PRIVATE MC_NOT_DATA REMOVE_THIS)
+# Helper for executables
+function(link_executable_dependencies target_name)
+    link_dlp_dependencies(${target_name})
+    target_link_libraries(${target_name} PRIVATE ${ROOT_LIBRARIES})
+endfunction()
 
-# This executable is meant for testing the CAF reading capabilities of the
-# library. It connects to the input file and attempts to read the contents of
-# the first/passed event.
-add_executable(test_caf test_caf.cc)
-target_link_libraries(test_caf PRIVATE ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(test_caf PRIVATE ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
-
-# This executable is meant for cases where "ML-only" CAFs are desired. It will
-# produce a CAF file with only the ML reconstruction outputs available. There
-# are two versions: one for data and one for simulation
-add_executable(make_standalone_simulation make_standalone.cc)
-target_compile_definitions(make_standalone_simulation PRIVATE MC_NOT_DATA)
-target_link_libraries(make_standalone_simulation PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_simulation ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(make_standalone_simulation PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
-
-add_executable(make_standalone_data make_standalone.cc)
-target_link_libraries(make_standalone_data PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_data ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(make_standalone_data PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
-
-# This executable is meant for merging already existing CAFs (holding Pandora
-# reconstruction outputs) with ML reconstructions outputs. There are two
-# versions available: one for data and one for simulation.
+# Merge executables
 add_executable(merge_sources_simulation merge_sources.cc)
 target_compile_definitions(merge_sources_simulation PRIVATE MC_NOT_DATA)
-target_link_libraries(merge_sources_simulation PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_simulation ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(merge_sources_simulation PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+link_executable_dependencies(merge_sources_simulation)
+target_link_libraries(merge_sources_simulation PRIVATE dlp_simulation)
 
 add_executable(merge_sources_data merge_sources.cc)
-target_link_libraries(merge_sources_data PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_data ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(merge_sources_data PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+link_executable_dependencies(merge_sources_data)
+target_link_libraries(merge_sources_data PRIVATE dlp_data)
 
-# This executable is meant for merging already existing CAFs (holding Pandora
-# reconstruction outputs) with ML reconstructions outputs. This is different
-# from the previous one in that it is meant to be used with one-to-many merging
-# of one CAF file with many HDF5 files. There are two versions available: one
-# for data and one for simulation.
-add_executable(merge_sources_simulation_multi merge_sources_multi.cc)
-target_compile_definitions(merge_sources_simulation_multi PRIVATE MC_NOT_DATA)
-target_link_libraries(merge_sources_simulation_multi PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_simulation ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(merge_sources_simulation_multi PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+# Standalone executables
+add_executable(make_standalone_simulation make_standalone.cc)
+target_compile_definitions(make_standalone_simulation PRIVATE MC_NOT_DATA)
+link_executable_dependencies(make_standalone_simulation)
+target_link_libraries(make_standalone_simulation PRIVATE dlp_simulation)
 
-add_executable(merge_sources_data_multi merge_sources_multi.cc)
-target_link_libraries(merge_sources_data_multi PRIVATE ${HDF5_LIBRARIES} ZLIB::ZLIB dlp_data ${sbnanaobj_LIBRARY_DIRS}/libsbnanaobj_StandardRecord.so ${ROOT_LIBRARIES})
-target_include_directories(merge_sources_data_multi PRIVATE ${HDF5_INCLUDE_DIR} ${SBNANAOBJ_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS})
+add_executable(make_standalone_data make_standalone.cc)
+link_executable_dependencies(make_standalone_data)
+target_link_libraries(make_standalone_data PRIVATE dlp_data)

@@ -65,11 +65,11 @@ namespace dlp::types
         ctype.insertMember("energy_init", HOFFSET(TruthInteraction, energy_init), H5::PredType::IEEE_F64LE);
         ctype.insertMember("energy_transfer", HOFFSET(TruthInteraction, energy_transfer), H5::PredType::IEEE_F64LE);
         ctype.insertMember("flash_hypo_pe", HOFFSET(TruthInteraction, flash_hypo_pe), H5::PredType::IEEE_F64LE);
-        ctype.insertMember("flash_ids", HOFFSET(TruthInteraction, flash_ids_handle), H5::VarLenType(H5::PredType::STD_I64LE));
+        ctype.insertMember("flash_ids", HOFFSET(TruthInteraction, flash_ids_handle), H5::VarLenType(H5::PredType::STD_I32LE));
         ctype.insertMember("flash_scores", HOFFSET(TruthInteraction, flash_scores_handle), H5::VarLenType(H5::PredType::IEEE_F32LE));
-        ctype.insertMember("flash_times", HOFFSET(TruthInteraction, flash_times_handle), H5::VarLenType(H5::PredType::IEEE_F64LE));
+        ctype.insertMember("flash_times", HOFFSET(TruthInteraction, flash_times_handle), H5::VarLenType(H5::PredType::IEEE_F32LE));
         ctype.insertMember("flash_total_pe", HOFFSET(TruthInteraction, flash_total_pe), H5::PredType::IEEE_F64LE);
-        ctype.insertMember("flash_volume_ids", HOFFSET(TruthInteraction, flash_volume_ids_handle), H5::VarLenType(H5::PredType::STD_I64LE));
+        ctype.insertMember("flash_volume_ids", HOFFSET(TruthInteraction, flash_volume_ids_handle), H5::VarLenType(H5::PredType::STD_I32LE));
         ctype.insertMember("hadronic_invariant_mass", HOFFSET(TruthInteraction, hadronic_invariant_mass), H5::PredType::IEEE_F64LE);
         ctype.insertMember("id", HOFFSET(TruthInteraction, id), H5::PredType::STD_I64LE);
         ctype.insertMember("inelasticity", HOFFSET(TruthInteraction, inelasticity), H5::PredType::IEEE_F64LE);
@@ -83,7 +83,7 @@ namespace dlp::types
         ctype.insertMember("is_matched", HOFFSET(TruthInteraction, is_matched), H5::PredType::STD_U8LE);
         ctype.insertMember("is_time_contained", HOFFSET(TruthInteraction, is_time_contained), H5::PredType::STD_U8LE);
         ctype.insertMember("is_truth", HOFFSET(TruthInteraction, is_truth), H5::PredType::STD_U8LE);
-        ctype.insertMember("lepton_p", HOFFSET(TruthInteraction, lepton_p), H5::PredType::STD_I64LE);
+        ctype.insertMember("lepton_p", HOFFSET(TruthInteraction, lepton_p), H5::PredType::IEEE_F64LE);
         ctype.insertMember("lepton_pdg_code", HOFFSET(TruthInteraction, lepton_pdg_code), H5::PredType::STD_I64LE);
         ctype.insertMember("lepton_track_id", HOFFSET(TruthInteraction, lepton_track_id), H5::PredType::STD_I64LE);
         ctype.insertMember("match_ids", HOFFSET(TruthInteraction, match_ids_handle), H5::VarLenType(H5::PredType::STD_I64LE));
@@ -97,11 +97,11 @@ namespace dlp::types
         ctype.insertMember("nucleon", HOFFSET(TruthInteraction, nucleon), H5::PredType::STD_I64LE);
         ctype.insertMember("num_particles", HOFFSET(TruthInteraction, num_particles), H5::PredType::STD_I64LE);
         ctype.insertMember("orig_id", HOFFSET(TruthInteraction, orig_id), H5::PredType::STD_I64LE);
-        ctype.insertMember("particle_counts", HOFFSET(TruthInteraction, particle_counts), H5::ArrayType(H5::PredType::IEEE_F32LE, 1, &std::array<hsize_t, 1>{6}[0]));
+        ctype.insertMember("particle_counts", HOFFSET(TruthInteraction, particle_counts), H5::ArrayType(H5::PredType::STD_I64LE, 1, &std::array<hsize_t, 1>{6}[0]));
         ctype.insertMember("particle_ids", HOFFSET(TruthInteraction, particle_ids_handle), H5::VarLenType(H5::PredType::STD_I64LE));
         ctype.insertMember("pdg_code", HOFFSET(TruthInteraction, pdg_code), H5::PredType::STD_I64LE);
         ctype.insertMember("position", HOFFSET(TruthInteraction, position), H5::ArrayType(H5::PredType::IEEE_F32LE, 1, &std::array<hsize_t, 1>{3}[0]));
-        ctype.insertMember("primary_particle_counts", HOFFSET(TruthInteraction, primary_particle_counts), H5::ArrayType(H5::PredType::IEEE_F32LE, 1, &std::array<hsize_t, 1>{6}[0]));
+        ctype.insertMember("primary_particle_counts", HOFFSET(TruthInteraction, primary_particle_counts), H5::ArrayType(H5::PredType::STD_I64LE, 1, &std::array<hsize_t, 1>{6}[0]));
         ctype.insertMember("primary_particle_ids", HOFFSET(TruthInteraction, primary_particle_ids_handle), H5::VarLenType(H5::PredType::STD_I64LE));
         ctype.insertMember("quark", HOFFSET(TruthInteraction, quark), H5::PredType::STD_I64LE);
         ctype.insertMember("reco_vertex", HOFFSET(TruthInteraction, reco_vertex), H5::ArrayType(H5::PredType::IEEE_F32LE, 1, &std::array<hsize_t, 1>{3}[0]));

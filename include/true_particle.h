@@ -7,6 +7,7 @@
 #define TRUE_PARTICLE_H
 
 #include <array>
+#include <string>
 #include "buffer.h"
 #include "composites.h"
 #include "enums.h"
@@ -15,13 +16,10 @@ namespace dlp::types
 {
     /**
      * @brief A class representing the truth particle in the HDF5 file.
-     * 
-     * This class represents the true particle in the HDF5 file. It contains
-     * information about the true particle that was stored by SPINE.
     */
     struct TruthParticle
     {
-        std::string ancestor_creation_process;              //!< Geant4 creation process of the ancestor particle.
+        char* ancestor_creation_process;                    //!< Geant4 creation process of the ancestor particle.
         int64_t ancestor_pdg_code;                          //!< PDG code of the ancestor particle.
         float ancestor_position[3];                         //!< Position of the ancestor particle.
         double ancestor_t;                                  //!< Time of the ancestor particle.
@@ -30,7 +28,7 @@ namespace dlp::types
         double cathode_offset;                              //!< Distance from the cathode.
         BufferView<int64_t> children_counts;                //!< Number of children of the particle.
         BufferView<int64_t> children_id;                    //!< List of particle ID of children particles.
-        std::string creation_process;                       //!< Geant4 creation process of the particle.
+        char* creation_process;                             //!< Geant4 creation process of the particle.
         double csda_ke;                                     //!< Continuous-slowing-down-approximation kinetic energy.
         double csda_ke_per_pid[6];                          //!< CSDA kinetic energy per PID.
         float depositions_adapt_q_sum;                      //!< Total tagged (reco non-ghost) charge deposited [ADC].
@@ -54,12 +52,12 @@ namespace dlp::types
         int64_t id;                                         //!< Particle ID.
         int64_t interaction_id;                             //!< Parent interaction ID.
         int64_t interaction_primary;                        //!< Whether the particle is a primary within its interaction (equivalent to is_primary).
-        bool is_cathode_crosser;                            //!< Whether the particle is a cathode-crosser.
-        bool is_contained;                                  //!< Whether the particle is contained.
-        bool is_matched;                                    //!< Whether the particle is matched.
-        bool is_primary;                                    //!< Whether the particle is a primary particle.
+        bool is_cathode_crosser;                            //!< Whether the interaction is a cathode-crosser.
+        bool is_contained;                                  //!< Whether the interaction is contained.
+        bool is_matched;                                    //!< Whether the interaction is matched to a true interaction.
+        bool is_primary;                                    //!< Whether the interaction is a primary interaction.
         bool is_time_contained;                             //!< Whether the particle is time-contained (within the "in-time" region of the drift window).
-        bool is_truth;                                      //!< Whether the particle is a truth particle.
+        bool is_truth;                                      //!< Whether the interaction is a truth interaction.
         bool is_valid;                                      //!< (Whether the particle passes thresholds and counts towards topology.
         double ke;                                          //!< Kinetic energy according from best energy estimator (CSDA, calorimetric, or MCS).
         float last_step[3];                                 //!< Coordinates of the last step of the particle.
@@ -82,7 +80,7 @@ namespace dlp::types
         int64_t orig_interaction_id;                        //!< Interaction ID as it was stored in the parent LArCV file under the interaction_id attribute.
         int64_t orig_parent_id;                             //!< Parent ID as it was stored in the parent LArCV file under the parent_id attribute.
         float p;                                            //!< Momentum magnitude.
-        std::string parent_creation_process;                //!< Geant4 creation process of the parent particle.
+        char* parent_creation_process;                      //!< Geant4 creation process of the parent particle.
         int64_t parent_id;                                  //!< Parent particle ID.
         int64_t parent_pdg_code;                            //!< PDG code of the parent particle.
         float parent_position[3];                           //!< Position of the parent particle.
@@ -104,17 +102,8 @@ namespace dlp::types
         float start_point[3];                               //!< Start point (vector) of the particle.
         double t;                                           //!< Time of the particle.
         int64_t track_id;                                   //!< Track ID of the particle.
-        std::string units;                                  //!< Units in which the position coordinates are expressed.
+        char* units;                                        //!< Units in which the position coordinates are expressed.
         
-        /**
-         * @brief Synchronize the BufferView objects.
-         * 
-         * For variable-length arrays, we need to keep track of memory in the
-         * variable-length buffers. The SyncVectors() method is used to update
-         * the BufferView<T> objects with the current memory locations. The
-         * hvl_t objects are used to keep track of the memory locations for each
-         * variable-length array.
-        */
         void SyncVectors();
 
         hvl_t children_counts_handle;
@@ -125,13 +114,6 @@ namespace dlp::types
         hvl_t module_ids_handle;
         hvl_t orig_children_id_handle;
     };
-    /**
-     * @brief Build the HDF5 compound type for the TruthParticle class.
-     * The composite type for the RecoParticle class needs to be defined.
-     * defined. This is handled using a template specialization of the
-     * BuildCompType() function.
-     * @return The HDF5 compound type for the TruthParticle class.
-    */
     template <>
     H5::CompType BuildCompType<TruthParticle>();
 } // namespace dlp::types

@@ -8,6 +8,6 @@ offset=0
 for i in "$@"
 do
     output=`sed 's/.\{3\}$//' <<< "${i}"`.caf.root
-    ./make_standalone_data $output $offset $i
+    "$(dirname "$0")/build/make_standalone_data" $output $offset $i
     ((offset+=1000))
 done

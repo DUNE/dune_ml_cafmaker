@@ -7,6 +7,7 @@
 #define TRUE_INTERACTION_H
 
 #include <array>
+#include <string>
 #include "buffer.h"
 #include "composites.h"
 #include "enums.h"
@@ -15,17 +16,12 @@ namespace dlp::types
 {
     /**
      * @brief A class representing the truth interaction in the HDF5 file.
-     * 
-     * This class represents the truth interaction in the HDF5 file. It
-     * contains truth information about the interaction that was stored by
-     * SPINE. This includes information about the interaction itself and some
-     * high-level information about the particles in the interaction.
      */
     struct TruthInteraction
     {
         double bjorken_x;                                   //!< Bjorken x of the neutrino interaction.
         double cathode_offset;                              //!< Distance from the cathode.
-        std::string creation_process;                       //!< Creation process of the neutrino.
+        char* creation_process;                             //!< Creation process of the neutrino.
         CurrentType current_type;                           //!< Current type of the neutrino.
         float depositions_adapt_q_sum;                      //!< Total tagged (reco non-ghost) charge deposited [ADC].
         float depositions_adapt_sum;                        //!< Total tagged (reco non-ghost) energy deposited [MeV].
@@ -82,20 +78,11 @@ namespace dlp::types
         int64_t size_g4;                                    //!< Number of (rasterized) g4 energy depositions (no detector effects).
         int64_t target;                                     //!< Target in the neutrino interaction.
         double theta;                                       //!< Angle of the neutrino interaction.
-        std::string topology;                               //!< Topology of the interaction (e.g. "0g0e1mu0pi2p") considering only primaries.
+        char* topology;                                     //!< Topology of the interaction (e.g. "0g0e1mu0pi2p") considering only primaries.
         int64_t track_id;                                   //!< Track ID of the neutrino interaction.
-        std::string units;                                  //!< Units in which the position coordinates are expressed.
+        char* units;                                        //!< Units in which the position coordinates are expressed.
         float vertex[3];                                    //!< Vertex of the interaction in detector coordinates (truth).
 
-        /**
-         * @brief Synchronize the BufferView objects.
-         * 
-         * For variable-length arrays, we need to keep track of memory in the
-         * variable-length buffers. The SyncVectors() method is used to update
-         * the BufferView<T> objects with the current memory locations. The
-         * hvl_t objects are used to keep track of the memory locations for each
-         * variable-length array.
-        */
         void SyncVectors();
 
         hvl_t flash_ids_handle;
@@ -109,13 +96,6 @@ namespace dlp::types
         hvl_t primary_particle_ids_handle;
     };
 
-    /**
-     * @brief Build the HDF5 compound type for the TruthInteraction class.
-     * The composite type for the TruthInteraction class needs to be defined.
-     * defined. This is handled using a template specialization of the
-     * BuildCompType() function.
-     * @return The HDF5 compound type for the TruthInteraction class.
-    */
     template <>
     H5::CompType BuildCompType<TruthInteraction>();
 } // namespace dlp::types

@@ -22,7 +22,7 @@ size_t get_nevents(H5::DataSpace & dsp)
     hsize_t dims_max = dsp.getSimpleExtentNdims();
     auto dims = new hsize_t[dims_max];
     dsp.getSimpleExtentDims(dims);
-    size_t nevents(dims[dims_max - 1]);
+    size_t nevents(dims[0]); 
     delete[] dims;
     return nevents;
 }
@@ -39,18 +39,11 @@ dlp::types::Event get_single_event(H5::H5File & file, int64_t index)
     H5::DataSpace dsp(dataset.getSpace());
 
     std::vector<dlp::types::Event> evt(1);
-    std::vector<hsize_t> start(1, index);
-    std::vector<hsize_t> count(1, 1);
-    dsp.selectHyperslab(H5S_SELECT_SET, count.data(), start.data());
+    hsize_t start[1] = { (hsize_t)index };
+    hsize_t count[1] = { 1 };
+    dsp.selectHyperslab(H5S_SELECT_SET, count, start);
 
-    H5::DataSpace memspace(H5S_SIMPLE);
-    std::vector<hsize_t> dims(dsp.getSimpleExtentNdims());
-    std::vector<hsize_t> dimsMax(dsp.getSimpleExtentNdims(), H5S_UNLIMITED);
-    dsp.getSimpleExtentDims(dims.data());
-    memspace.setExtentSimple(dsp.getSimpleExtentNdims(), dims.data(), dimsMax.data());
-    start[0] = 0;
-    count[0] = 1;
-    memspace.selectHyperslab(H5S_SELECT_SET, count.data(), start.data());
+    H5::DataSpace memspace(1, count);
 
     H5::CompType ctype(dlp::types::BuildCompType<dlp::types::Event>());
     dataset.read(evt.data(), ctype, memspace, dsp);
@@ -65,13 +58,18 @@ dlp::types::Event get_single_event(H5::H5File & file, int64_t index)
 */
 std::vector<dlp::types::Event> get_all_events(H5::H5File & file)
 {
+    std::cout << "  Inside get_all_events: opening dataset 'events'..." << std::endl;
     H5::DataSet dataset(file.openDataSet("events"));
     H5::DataSpace dsp(dataset.getSpace());
 
     std::vector<dlp::types::Event> evt;
-    evt.resize(get_nevents(dsp));
+    size_t n = get_nevents(dsp);
+    std::cout << "  Inside get_all_events: n_events = " << n << ". Resizing vector..." << std::endl;
+    evt.resize(n);
     H5::CompType ctype(dlp::types::BuildCompType<dlp::types::Event>());
+    std::cout << "  Inside get_all_events: reading dataset..." << std::endl;
     dataset.read(evt.data(), ctype, H5::DataSpace::ALL, H5::DataSpace::ALL);
+    std::cout << "  Inside get_all_events: finished reading." << std::endl;
     return evt;
 }
 
@@ -85,27 +83,42 @@ std::vector<dlp::types::Event> get_all_events(H5::H5File & file)
 template <class T>
 std::vector<T> get_product(H5::H5File & file, dlp::types::Event & evt)
 {
-    H5::DataSet ds_ref(file.openDataSet("events"));
+    hid_t file_id = file.getId();
+    const hdset_reg_ref_t& ref = evt.GetRef<T>();
+    
+    bool all_zero = true;
+    const unsigned char* p_ref = (const unsigned char*)&ref;
+    for(size_t i=0; i<sizeof(hdset_reg_ref_t); ++i) if(p_ref[i] != 0) { all_zero = false; break; }
+    if(all_zero) return std::vector<T>();
 
-    const void *buff_ref_const(&(evt.GetRef<T>()));
-    ds_ref.dereference(file, buff_ref_const, H5R_DATASET_REGION);
-    void *buff_ref(&(const_cast<hdset_reg_ref_t&>(evt.GetRef<T>())));
-    H5::DataSpace ref_region = file.getRegion(buff_ref);
-
-    H5::DataSpace memspace(H5S_SIMPLE);
-    std::vector<hsize_t> dims(ref_region.getSimpleExtentNdims());
-    std::vector<hsize_t> dims_max(ref_region.getSimpleExtentNdims(), H5S_UNLIMITED);
-    ref_region.getSimpleExtentDims(dims.data());
-    memspace.setExtentSimple(1, dims.data(), dims_max.data());
-    std::vector<hsize_t> start(1, 0);
-    std::vector<hsize_t> count(1, static_cast<hsize_t>(ref_region.getSelectNpoints()));
-    memspace.selectHyperslab(H5S_SELECT_SET, count.data(), start.data());
-
-    std::vector<T> data_product(static_cast<hsize_t>(ref_region.getSelectNpoints()));
+    hid_t dataset_id = H5Rdereference(file_id, H5P_DEFAULT, H5R_DATASET_REGION, &ref);
+    if (dataset_id < 0) return std::vector<T>();
+    H5::DataSet target_ds(dataset_id);
+    
+    hid_t region_id = H5Rget_region(file_id, H5R_DATASET_REGION, &ref);
+    if (region_id < 0) return std::vector<T>();
+    H5::DataSpace file_space(region_id);
+    
+    hssize_t npoints = file_space.getSelectNpoints();
+    if (npoints <= 0) return std::vector<T>();
+    
+    hsize_t m_dims[1] = { (hsize_t)npoints };
+    H5::DataSpace mem_space(1, m_dims);
+    
+    std::vector<T> data_product(npoints);
     H5::CompType ctype(dlp::types::BuildCompType<T>());
-    ds_ref.read(data_product.data(), ctype, memspace, ref_region);
+    target_ds.read(data_product.data(), ctype, mem_space, file_space);
+    
+    for (auto & item : data_product) {
+        item.SyncVectors();
+    }
+    
+    // Explicit cast to void* for H5Dvlen_reclaim
+    // H5Dvlen_reclaim(ctype.getId(), mem_space.getId(), H5P_DEFAULT, (void*)data_product.data());
+    
     return data_product;
 }
+
 /**
  * Explicit instantiation of the get_product function for the types of products
  * that we expect to use.

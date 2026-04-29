@@ -7,6 +7,7 @@
 #define RECO_PARTICLE_H
 
 #include <array>
+#include <string>
 #include "buffer.h"
 #include "composites.h"
 #include "enums.h"
@@ -15,10 +16,6 @@ namespace dlp::types
 {
     /**
      * @brief A class representing the reconstructed particle in the HDF5 file.
-     * 
-     * This class represents the reconstructed particle in the HDF5 file. It
-     * contains information about the reconstructed particle that was stored by
-     * SPINE.
     */
     struct RecoParticle
     {
@@ -65,18 +62,9 @@ namespace dlp::types
         float start_dir[3];                                 //!< Unit direction vector calculated at the particle start point.
         float start_point[3];                               //!< Start point (vector) of the particle.
         float start_straightness;                           //!< Straightness at the start of the particle.
-        std::string units;                                  //!< Units in which the position coordinates are expressed.
+        char* units;                                        //!< Units in which the position coordinates are expressed.
         float vertex_distance;                              //!< Distance from the vertex.
     
-        /**
-         * @brief Synchronize the BufferView objects.
-         * 
-         * For variable-length arrays, we need to keep track of memory in the
-         * variable-length buffers. The SyncVectors() method is used to update
-         * the BufferView<T> objects with the current memory locations. The
-         * hvl_t objects are used to keep track of the memory locations for each
-         * variable-length array.
-        */
         void SyncVectors();
 
         hvl_t fragment_ids_handle;
@@ -86,13 +74,6 @@ namespace dlp::types
         hvl_t module_ids_handle;
         hvl_t ppn_ids_handle;
     };
-    /**
-     * @brief Build the HDF5 compound type for the RecoParticle class.
-     * The composite type for the RecoParticle class needs to be defined.
-     * defined. This is handled using a template specialization of the
-     * BuildCompType() function.
-     * @return The HDF5 compound type for the RecoParticle class.
-    */
     template <>
     H5::CompType BuildCompType<RecoParticle>();
 } // namespace dlp::types

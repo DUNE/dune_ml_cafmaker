@@ -7,6 +7,7 @@
 #define RECO_INTERACTION_H
 
 #include <array>
+#include <string>
 #include "buffer.h"
 #include "composites.h"
 
@@ -14,11 +15,6 @@ namespace dlp::types
 {
     /**
      * @brief A class representing the reconstructed interaction in the HDF5 file.
-     * 
-     * This class represents the reconstructed interaction in the HDF5 file. It
-     * contains all of the information about the interaction that was reconstructed
-     * by SPINE. This includes information about the interaction itself and some
-     * high-level information about the particles in the interaction.
      */
     struct RecoInteraction
     {
@@ -48,19 +44,10 @@ namespace dlp::types
         int64_t primary_particle_counts[6];                 //!< The number of primary particles of each type in the interaction.
         BufferView<int64_t> primary_particle_ids;           //!< Primary particle IDs in the interaction.
         int64_t size;                                       //!< The size of the interaction (number of voxels).
-        std::string topology;                               //!< Topology of the interaction (e.g. "0g0e1mu0pi2p") considering only primaries.
-        std::string units;                                  //!< Units in which the position coordinates are expressed.
+        char* topology;                                     //!< Topology of the interaction (e.g. "0g0e1mu0pi2p") considering only primaries.
+        char* units;                                        //!< Units in which the position coordinates are expressed.
         float vertex[3];                                    //!< Vertex of the interaction in detector coordinates.
 
-        /**
-         * @brief Synchronize the BufferView objects.
-         * 
-         * For variable-length arrays, we need to keep track of memory in the
-         * variable-length buffers. The SyncVectors() method is used to update
-         * the BufferView<T> objects with the current memory locations. The
-         * hvl_t objects are used to keep track of the memory locations for each
-         * variable-length array.
-        */
         void SyncVectors();
 
         hvl_t flash_ids_handle;
@@ -74,13 +61,6 @@ namespace dlp::types
         hvl_t primary_particle_ids_handle;
     };
 
-    /**
-     * @brief Build the HDF5 compound type for the RecoInteraction class.
-     * The composite type for the RecoInteraction class needs to be defined.
-     * defined. This is handled using a template specialization of the
-     * BuildCompType() function.
-     * @return The HDF5 compound type for the RecoInteraction class.
-    */
     template <>
     H5::CompType BuildCompType<RecoInteraction>();
 } // namespace dlp::types
