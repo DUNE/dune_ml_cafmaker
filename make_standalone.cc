@@ -4,16 +4,13 @@
  */
 #include <iostream>
 #include <vector>
+#include <memory>
+#include <string>
 #include <ctype.h>
-#include "H5Cpp.h"
+#include <spine/error.hpp>
+#include <spine/reader.hpp>
 
 #include "include/record_fillers.h"
-#include "include/products.h"
-#include "include/event.h"
-#include "include/reco_interaction.h"
-#include "include/reco_particle.h"
-#include "include/true_interaction.h"
-#include "include/true_particle.h"
 
 #include "duneanaobj/StandardRecord/StandardRecord.h"
 #include "duneanaobj/StandardRecord/SRInteraction.h"
@@ -43,43 +40,55 @@ int main(int argc, char const *argv[])
 
     for(size_t n(3); n < argc; ++n)
     {
-        H5::H5File file(argv[n], H5F_ACC_RDONLY);
-        std::cout << "Opened file: " << argv[n] << std::endl;
-        std::cout << "Calling get_all_events..." << std::endl;
-        std::vector<dlp::types::Event> events(get_all_events(file));
-        std::cout << "Found " << events.size() << " events. Starting event loop..." << std::endl;
-
-        int i_evt = 0;
-        for(dlp::types::Event &evt : events)
+        spine::ReaderOptions options;
+        options.products = {"run_info", "reco_particles", "reco_interactions"};
+        #ifdef MC_NOT_DATA
+        options.products.insert(options.products.end(), {"truth_particles", "truth_interactions"});
+        #endif
+        std::unique_ptr<spine::Reader> file;
+        try
         {
-            std::cout << "Processing event " << i_evt++ << "..." << std::endl;
+            file = std::make_unique<spine::Reader>(argv[n], options);
+        }
+        catch(const spine::Error & e)
+        {
+            std::cerr << e.what() << std::endl;
+            return 1;
+        }
+        std::cout << "Opened file: " << argv[n] << std::endl;
+        std::cout << "Found " << file->num_events() << " events. Starting event loop..." << std::endl;
+
+        for(uint64_t i_evt = 0; i_evt < file->num_events(); ++i_evt)
+        {
+            std::cout << "Processing event " << i_evt << "..." << std::endl;
             rec->common.ixn.dlp.clear();
             rec->common.ixn.ndlp = 0;
             rec->mc.nu.clear();
             rec->mc.nnu = 0;
             try
             {
+                const spine::Event evt = file->event(i_evt);
                 std::cout << "  Calling package_event..." << std::endl;
-                package_event(rec, file, evt, std::atoi(argv[2]));
-                std::cout << "  Calling get_product<RunInfo>..." << std::endl;
-                std::vector<dlp::types::RunInfo> run_info(get_product<dlp::types::RunInfo>(file, evt));
-                
+                package_event(rec, evt, std::atoi(argv[2]));
+                const spine::RunInfo * run_info = evt.run_info();
+                if(!run_info)
+                    throw spine::Error("no run_info for event " + std::to_string(i_evt));
+
                 // For standalone FD CAFs, we default to FD HD
-                rec->meta.fd_hd.run = run_info[0].run;
-                rec->meta.fd_hd.subrun = run_info[0].subrun;
-                rec->meta.fd_hd.event = run_info[0].event;
+                rec->meta.fd_hd.run = run_info->run;
+                rec->meta.fd_hd.subrun = run_info->subrun;
+                rec->meta.fd_hd.event = run_info->event;
                 rec->meta.fd_hd.enabled = true;
                 
                 pot->Fill(1);
                 nevt->Fill(1);
                 rec_tree.Fill();
             }
-            catch(const H5::ReferenceException & e)
+            catch(const spine::Error & e)
             {
-                std::cerr << "Found incomplete entry for event." << std::endl;
+                std::cerr << e.what() << std::endl;
             }
         }
-        file.close();
     }
     pot->Write();
     nevt->Write();

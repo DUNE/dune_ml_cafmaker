@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.19)
 set(CMAKE_CXX_STANDARD 20)
 
 
@@ -15,54 +15,22 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 
 project(dune_ml_cafmaker)
 
-# Robust HDF5 detection
-if(HDF5_INSTALL)
-  set(HDF5_ROOT ${HDF5_INSTALL})
-  set(HDF5_DIR ${HDF5_INSTALL})
-endif()
-
-# Explicitly request CXX and HL components
-find_package(HDF5 REQUIRED COMPONENTS C CXX HL)
-
-# Handle the case where HDF5_INCLUDE_DIRS is empty (common in CONFIG mode)
-if("${HDF5_INCLUDE_DIRS}" STREQUAL "")
-  get_filename_component(_HDF5_BASE "${HDF5_DIR}/../../../../" ABSOLUTE)
-  if(NOT EXISTS "${_HDF5_BASE}/include/H5Cpp.h")
-    get_filename_component(_HDF5_BASE "${HDF5_DIR}/../../../" ABSOLUTE)
-  endif()
-  if(EXISTS "${_HDF5_BASE}/include/H5Cpp.h")
-    set(HDF5_INCLUDE_DIRS "${_HDF5_BASE}/include")
-  endif()
-endif()
-
-# Ensure we have the C++ and HL libraries
-if(TARGET hdf5::hdf5_cpp-shared)
-    set(HDF5_LIBRARIES hdf5::hdf5_cpp-shared hdf5::hdf5_hl_cpp-shared hdf5::hdf5-shared)
-elseif(TARGET hdf5::hdf5_cpp-static)
-    set(HDF5_LIBRARIES hdf5::hdf5_cpp-static hdf5::hdf5_hl_cpp-static hdf5::hdf5-static)
-endif()
-
-# Debugging info
-message(STATUS "HDF5 Found: ${HDF5_FOUND}")
-message(STATUS "HDF5 Include Dirs: ${HDF5_INCLUDE_DIRS}")
-message(STATUS "HDF5 Libraries: ${HDF5_LIBRARIES}")
+# SPINE HDF5 files are read by spine-reader, which needs only the HDF5 C library.
+find_package(SpineReader 0.1 REQUIRED)
 
 find_package(duneanaobj REQUIRED)
-find_package(ZLIB REQUIRED)
 find_package(ROOT REQUIRED)
 
 file(GLOB SPINE_SOURCES src/*.cc)
 
 # Helper function to ensure all includes and libraries are correctly attached to targets
 function(link_dlp_dependencies target_name)
-    target_include_directories(${target_name} PUBLIC 
-        include 
-        ${HDF5_INCLUDE_DIRS} 
+    target_include_directories(${target_name} PUBLIC
+        include
         ${ROOT_INCLUDE_DIRS}
     )
-    target_link_libraries(${target_name} PRIVATE 
-        ${HDF5_LIBRARIES} 
-        ZLIB::ZLIB 
+    target_link_libraries(${target_name} PRIVATE
+        SpineReader::spine_reader
         duneanaobj::StandardRecord
     )
 endfunction()

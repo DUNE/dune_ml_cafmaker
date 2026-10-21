@@ -8,7 +8,7 @@ The `dune_ml_cafmaker` package provides code for merging the ML reconstruction o
 
 ## Dependencies
 The package has two main requirements:
-* HDF5 C++ library (instructions below)
+* spine-reader, which needs only the HDF5 C library (instructions below)
 * `duneanaobj` (must have ML variables implemented in `StandardRecord`)
 
 ### Using `duneanaobj` from UPS
@@ -23,7 +23,7 @@ The provided `setup.sh` script handles setting up a recent version for you, but 
 ### 1. Source the Environment
 A `setup.sh` script is provided to easily load dependencies into your environment. You must have the base Fermilab `ups` environment available beforehand. 
 
-First, clone the repository and source the setup script. The setup script will define the `$HDF5_HOME` variable and load the necessary compiler (`duneanaobj`) and `cmake`:
+First, clone the repository and source the setup script. The setup script loads the necessary compiler (`duneanaobj`) and `cmake`:
 
 ```bash
 git clone https://github.com/DUNE/dune_ml_cafmaker.git
@@ -32,31 +32,22 @@ source /cvmfs/dune.opensciencegrid.org/products/dune/setup_dune.sh
 source setup.sh
 ```
 
-### 2. Install the HDF5 C++ API
-The most recent versions of `hdf5` available on UPS do not come packaged with the C++ API. The latest version which works as a viable dependency is `v1.10.5` with qualifier `e20`, which is absolutely ancient. Moreover, `hdf5` will not be supported in the future as a UPS product. The switch to qualifier `e26` means that the UPS product is essentially a non-workable solution for the foreseable future. The unfortunate solution is to clone and build the `hdf5` repository. 
-
-With the environment set up from the previous step, build an `e26` compatible `hdf5`:
+### 2. Build spine-reader
+SPINE HDF5 files are read with spine-reader, a shared C++17 library that reads both SPINE HDF5 layouts (V1 and V2). It needs only the HDF5 C library, so the UPS `hdf5` product that `setup.sh` sets up works as is:
 
 ```bash
-# $HDF5_HOME is already defined by setup.sh
-git clone https://github.com/HDFGroup/hdf5.git $HDF5_HOME/hdf5_src
-mkdir $HDF5_HOME/hdf5_build
-mkdir $HDF5_HOME/hdf5_install
-cd $HDF5_HOME/hdf5_src
-git checkout hdf5-1_10_5
-cd $HDF5_HOME/hdf5_build
-cmake $HDF5_HOME/hdf5_src/ -DCMAKE_CXX_COMPILER="g++" -DCMAKE_CXX_STANDARD=17 -DCMAKE_INSTALL_PREFIX=$HDF5_HOME/hdf5_install/
-make install
+cmake -S /path/to/spine-reader -B spine-reader-build -DHDF5_ROOT=$HDF5_FQ_DIR -DCMAKE_INSTALL_PREFIX=$PWD/spine-reader-install -DSPINE_READER_BUILD_TESTS=OFF
+cmake --build spine-reader-build -j8 && cmake --install spine-reader-build
 ```
 
 ### 3. Build `dune_ml_cafmaker`
-Once HDF5 is installed, you can build the `dune_ml_cafmaker` executables. Make sure to point CMake to the `hdf5` installation directory you just created:
+Point CMake to the spine-reader installation:
 
 ```bash
 # Make sure you are in the dune_ml_cafmaker directory
 # cd /path/to/dune_ml_cafmaker
 mkdir build
-cmake -S . -B build -DHDF5_DIR="$HDF5_HOME/hdf5_install/share/cmake/hdf5"
+cmake -S . -B build -DCMAKE_PREFIX_PATH=$PWD/spine-reader-install -DHDF5_ROOT=$HDF5_FQ_DIR
 make -C build
 ```
 

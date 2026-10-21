@@ -6,15 +6,12 @@
 #include <iostream>
 #include <vector>
 #include <tuple>
+#include <memory>
+#include <optional>
 #include <ctype.h>
-#include "H5Cpp.h"
+#include <spine/error.hpp>
+#include <spine/reader.hpp>
 
-#include "include/products.h"
-#include "include/event.h"
-#include "include/reco_interaction.h"
-#include "include/reco_particle.h"
-#include "include/true_interaction.h"
-#include "include/true_particle.h"
 #include "include/record_fillers.h"
 #include "include/logger.h"
 
@@ -85,21 +82,20 @@ int main(int argc, char const * argv[])
         return 0;
     }
 
-    H5::H5File input_h5(argv[3], H5F_ACC_RDONLY);
-    std::map<index_t, size_t> event_map;
-    std::vector<dlp::types::Event> events(get_all_events(input_h5));
-    for(size_t e(0); e < events.size(); ++e)
+    spine::ReaderOptions options;
+    options.products = {"run_info", "reco_particles", "reco_interactions"};
+    #ifdef MC_NOT_DATA
+    options.products.insert(options.products.end(), {"truth_particles", "truth_interactions"});
+    #endif
+    std::unique_ptr<spine::Reader> input_h5;
+    try
     {
-        try
-        {
-            std::vector<dlp::types::RunInfo> run_info(get_product<dlp::types::RunInfo>(input_h5, events.at(e)));
-            index_t index(run_info.back().run, run_info.back().subrun, run_info.back().event);
-            event_map.insert(std::make_pair(index, e));
-        }
-        catch(const H5::ReferenceException & e)
-        {
-            LOG_CRITICAL("Found incomplete entry for event." << std::endl);
-        }
+        input_h5 = std::make_unique<spine::Reader>(argv[3], options);
+    }
+    catch(const spine::Error & e)
+    {
+        LOG_CRITICAL(e.what() << std::endl);
+        return 1;
     }
 
     TFile *input_caf = TFile::Open(argv[2], "read");
@@ -123,17 +119,19 @@ int main(int argc, char const * argv[])
         rec->common.ixn.ndlp = 0;
 
         index_t index = get_run_info(rec);
-        if(event_map.find(index) != event_map.end())
+        try
         {
-            LOG_INFO("Matched Event " << std::get<2>(index) << " in (Run, Subrun) = (" << std::get<0>(index) << ", " << std::get<1>(index) << ") of CAF input to HDF5 event." << std::endl);
-            try
+            // The first HDF5 event with this (run, subrun, event) wins, as before.
+            std::optional<uint64_t> entry = input_h5->find(std::get<0>(index), std::get<1>(index), std::get<2>(index));
+            if(entry)
             {
-                package_event(rec, input_h5, events[event_map[index]]);
+                LOG_INFO("Matched Event " << std::get<2>(index) << " in (Run, Subrun) = (" << std::get<0>(index) << ", " << std::get<1>(index) << ") of CAF input to HDF5 event." << std::endl);
+                package_event(rec, input_h5->event(*entry));
             }
-            catch(const H5::ReferenceException & e)
-            {
-                LOG_CRITICAL("Found incomplete entry for event." << std::endl);
-            }
+        }
+        catch(const spine::Error & e)
+        {
+            LOG_CRITICAL(e.what() << std::endl);
         }
         output_tree->Fill();
     }
@@ -167,7 +165,6 @@ int main(int argc, char const * argv[])
     }
     #endif
     
-    input_h5.close();
     input_caf->Close();
     output_caf.Close();
 
