@@ -79,7 +79,7 @@ int main(int argc, char const * argv[])
     if(argc < 4)
     {
         LOG_CRITICAL("Usage: ./merge_sources <output_file> <input_caf_file> <input_h5_file>" << std::endl);
-        return 0;
+        return 1;
     }
 
     spine::ReaderOptions options;
@@ -99,16 +99,26 @@ int main(int argc, char const * argv[])
     }
 
     TFile *input_caf = TFile::Open(argv[2], "read");
+    if(!input_caf || input_caf->IsZombie())
+    {
+        LOG_CRITICAL("Cannot open the input CAF " << argv[2] << std::endl);
+        return 1;
+    }
     TTree *input_tree = (TTree*)input_caf->Get("cafmaker/cafTree");
     if(!input_tree)
     {
-        LOG_CRITICAL("CAF file does not contain recTree." << std::endl);
-        return 0;
+        LOG_CRITICAL("Input CAF " << argv[2] << " has no cafmaker/cafTree." << std::endl);
+        return 1;
     }
     caf::StandardRecord *rec = new caf::StandardRecord();
     input_tree->SetBranchAddress("rec", &rec);
 
     TFile output_caf(argv[1], "recreate");
+    if(output_caf.IsZombie())
+    {
+        LOG_CRITICAL("Cannot create the output CAF " << argv[1] << std::endl);
+        return 1;
+    }
     TTree *output_tree = new TTree("recTree", "records");
     output_tree->Branch("rec", &rec);
 
