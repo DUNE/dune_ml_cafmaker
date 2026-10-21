@@ -32,7 +32,12 @@ int main(int argc, char const *argv[])
 
     TFile caf(argv[1], "recreate");
     TTree rec_tree("recTree", "Event tree for ML reconstruction");
-    caf::StandardRecord *rec = new caf::StandardRecord;
+    // Value-initialise: StandardRecord members without a default (beam.ismc,
+    // common.ixn.npandora, common.ixn.nsandreco) would otherwise hold garbage.
+    caf::StandardRecord *rec = new caf::StandardRecord();
+    #ifdef MC_NOT_DATA
+    rec->beam.ismc = true;
+    #endif
     rec_tree.Branch("rec", &rec);
 
     TH1F * pot = new TH1F("TotalPOT", "TotalPOT", 1, 0, 1);

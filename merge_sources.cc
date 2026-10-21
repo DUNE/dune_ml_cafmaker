@@ -105,7 +105,7 @@ int main(int argc, char const * argv[])
         LOG_CRITICAL("CAF file does not contain recTree." << std::endl);
         return 0;
     }
-    caf::StandardRecord *rec = new caf::StandardRecord;
+    caf::StandardRecord *rec = new caf::StandardRecord();
     input_tree->SetBranchAddress("rec", &rec);
 
     TFile output_caf(argv[1], "recreate");
