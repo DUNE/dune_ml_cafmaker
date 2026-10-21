@@ -12,15 +12,18 @@
 #include "duneanaobj/StandardRecord/StandardRecord.h"
 #include "logger.h"
 
+// SPINE stores energies in MeV and momenta in MeV/c; StandardRecord wants GeV and GeV/c.
+constexpr double kMeVToGeV = 1e-3;
+
 caf::SRTrueParticle fill_truth_particle(const spine::TruthParticle &p, uint64_t offset)
 {
     caf::SRTrueParticle part;
     part.pdg = p.pdg_code;
     // SRLorentzVector has E, px, py, pz members
-    part.p.E = p.energy_init;
-    part.p.px = p.momentum[0];
-    part.p.py = p.momentum[1];
-    part.p.pz = p.momentum[2];
+    part.p.E = p.energy_init * kMeVToGeV;
+    part.p.px = p.momentum[0] * kMeVToGeV;
+    part.p.py = p.momentum[1] * kMeVToGeV;
+    part.p.pz = p.momentum[2] * kMeVToGeV;
     
     // SRTrueParticle has start_pos and end_pos
     part.start_pos = caf::SRVector3D(p.position[0], p.position[1], p.position[2]);
@@ -36,8 +39,8 @@ caf::SRRecoParticle fill_particle(const spine::RecoParticle &p, const std::map<i
     caf::SRRecoParticle part;
     part.primary = p.is_primary;
     part.pdg = p.pdg_code;
-    part.E = p.ke; 
-    part.p = caf::SRVector3D(p.momentum[0], p.momentum[1], p.momentum[2]);
+    part.E = p.ke * kMeVToGeV;
+    part.p = caf::SRVector3D(p.momentum[0] * kMeVToGeV, p.momentum[1] * kMeVToGeV, p.momentum[2] * kMeVToGeV);
     part.start = caf::SRVector3D(p.start_point[0], p.start_point[1], p.start_point[2]);
     part.end = caf::SRVector3D(p.end_point[0], p.end_point[1], p.end_point[2]);
     part.contained = p.is_contained;
@@ -69,9 +72,9 @@ caf::SRTrueInteraction fill_truth_interaction(const spine::TruthInteraction &in,
     caf::SRTrueInteraction ret;
     ret.id = in.id;
     ret.pdg = in.pdg_code;
-    ret.E = in.energy_init;
+    ret.E = in.energy_init * kMeVToGeV;
     ret.vtx = caf::SRVector3D(in.vertex[0], in.vertex[1], in.vertex[2]);
-    ret.momentum = caf::SRVector3D(in.momentum[0], in.momentum[1], in.momentum[2]);
+    ret.momentum = caf::SRVector3D(in.momentum[0] * kMeVToGeV, in.momentum[1] * kMeVToGeV, in.momentum[2] * kMeVToGeV);
     
     LOG_DEBUG("Interaction " << in.id << " has " << in.particle_ids.size() << " particles." << std::endl);
     for(int64_t id : in.particle_ids) {
