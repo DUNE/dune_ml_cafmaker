@@ -27,10 +27,15 @@ int main(int argc, char const *argv[])
     if(argc < 4)
     {
         std::cerr << "Usage: ./make_standalone <output file> <event offset> <input file(s)>" << std::endl;
-        return 0;
+        return 1;
     }
 
     TFile caf(argv[1], "recreate");
+    if(caf.IsZombie())
+    {
+        std::cerr << "Cannot create the output CAF " << argv[1] << std::endl;
+        return 1;
+    }
     TTree rec_tree("recTree", "Event tree for ML reconstruction");
     // Value-initialise: StandardRecord members without a default (beam.ismc,
     // common.ixn.npandora, common.ixn.nsandreco) would otherwise hold garbage.
