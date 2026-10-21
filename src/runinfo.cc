@@ -28,8 +28,9 @@ namespace dlp::types
      * @return The HDF5 compound type for the RunInfo class.
     */
     template <>
-    H5::CompType BuildCompType<RunInfo>()
+    H5::CompType BuildCompType<RunInfo>(const H5::CompType* fileType)
     {
+        (void)fileType;
         // Set the size of the compound type to the size of the RunInfo.
         H5::CompType ctype(sizeof(RunInfo));
 

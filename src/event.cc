@@ -64,8 +64,9 @@ namespace dlp::types
      * @return The HDF5 compound type for the Event class.
     */
     template <>
-    H5::CompType BuildCompType<Event>()
+    H5::CompType BuildCompType<Event>(const H5::CompType* fileType)
     {
+        (void)fileType;
         // Set the size of the compound type to the size of the Event.
         H5::CompType ctype(sizeof(Event));
 

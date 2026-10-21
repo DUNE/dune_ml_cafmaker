@@ -75,7 +75,7 @@ namespace dlp::types
         hvl_t ppn_ids_handle;
     };
     template <>
-    H5::CompType BuildCompType<RecoParticle>();
+    H5::CompType BuildCompType<RecoParticle>(const H5::CompType* fileType);
 } // namespace dlp::types
 
 #endif // RECO_PARTICLE_H

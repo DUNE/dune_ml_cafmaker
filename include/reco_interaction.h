@@ -62,6 +62,6 @@ namespace dlp::types
     };
 
     template <>
-    H5::CompType BuildCompType<RecoInteraction>();
+    H5::CompType BuildCompType<RecoInteraction>(const H5::CompType* fileType);
 } // namespace dlp::types
 #endif // RECO_INTERACTION_H

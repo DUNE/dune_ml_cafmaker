@@ -97,6 +97,6 @@ namespace dlp::types
     };
 
     template <>
-    H5::CompType BuildCompType<TruthInteraction>();
+    H5::CompType BuildCompType<TruthInteraction>(const H5::CompType* fileType);
 } // namespace dlp::types
 #endif // TRUE_INTERACTION_H

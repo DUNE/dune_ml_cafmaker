@@ -45,6 +45,6 @@ namespace dlp::types
      * @return The HDF5 compound type for the RunInfo class.
     */
     template <>
-    H5::CompType BuildCompType<RunInfo>();
+    H5::CompType BuildCompType<RunInfo>(const H5::CompType* fileType);
 } // namespace dlp::types
 #endif // RUNINFO_H

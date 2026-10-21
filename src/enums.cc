@@ -215,4 +215,31 @@ namespace dlp::types
         semantic_type_enumtype.insert("Unknown", enum_ptr{-1});
         return semantic_type_enumtype;
     }
+
+    H5::EnumType create_bool_enumtype()
+    {
+        H5::EnumType e(H5::PredType::NATIVE_SCHAR);
+        signed char f = 0, t = 1;
+        e.insert("FALSE", &f);
+        e.insert("TRUE", &t);
+        return e;
+    }
+
+    void insert_adaptive(H5::CompType& ctype, const H5::CompType* fileType,
+                         const std::string& name, size_t offset, const H5::DataType& fallback)
+    {
+        if (fileType)
+        {
+            try {
+                int idx = fileType->getMemberIndex(name);
+                H5::DataType ft = fileType->getMemberDataType(idx);
+                H5T_class_t cls = fallback.getClass();
+                bool identity = (cls != H5T_VLEN && cls != H5T_ARRAY) && (ft.getSize() == fallback.getSize());
+                ctype.insertMember(name, offset, identity ? ft : fallback);
+            } catch (const H5::Exception&) { /* member absent in this schema -> skip */ }
+            return;
+        }
+        ctype.insertMember(name, offset, fallback);
+    }
+
 }

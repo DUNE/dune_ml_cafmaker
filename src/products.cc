@@ -106,7 +106,8 @@ std::vector<T> get_product(H5::H5File & file, dlp::types::Event & evt)
     H5::DataSpace mem_space(1, m_dims);
     
     std::vector<T> data_product(npoints);
-    H5::CompType ctype(dlp::types::BuildCompType<T>());
+    H5::CompType file_ctype(target_ds.getCompType());
+    H5::CompType ctype(dlp::types::BuildCompType<T>(&file_ctype));
     target_ds.read(data_product.data(), ctype, mem_space, file_space);
     
     for (auto & item : data_product) {

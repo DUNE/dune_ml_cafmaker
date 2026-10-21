@@ -216,5 +216,13 @@ namespace dlp::types
     */
     H5::EnumType create_shape_enumtype();
 
+    /// Enum for is_* boolean fields (native signed char {FALSE=0,TRUE=1}) in recent SPINE h5.
+    H5::EnumType create_bool_enumtype();
+
+    /// Insert a member adaptively: skip if the file lacks it (schema drift); identity-read
+    /// size-matched scalars/enums (name/representation-agnostic); else convert via fallback.
+    void insert_adaptive(H5::CompType& ctype, const H5::CompType* fileType,
+                         const std::string& name, size_t offset, const H5::DataType& fallback);
+
 } // namespace dlp::types
 #endif // ENUMS_H

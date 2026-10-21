@@ -14,7 +14,7 @@ namespace dlp::types
     // Generic template for building a compound type that will be overloaded
     // for each type that we create below.
     template <typename T>
-    H5::CompType BuildCompType();
+    H5::CompType BuildCompType(const H5::CompType* fileType = nullptr);
 }
 
 #endif

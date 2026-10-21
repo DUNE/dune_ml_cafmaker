@@ -115,7 +115,7 @@ namespace dlp::types
         hvl_t orig_children_id_handle;
     };
     template <>
-    H5::CompType BuildCompType<TruthParticle>();
+    H5::CompType BuildCompType<TruthParticle>(const H5::CompType* fileType);
 } // namespace dlp::types
 
 #endif // TRUE_PARTICLE_H
