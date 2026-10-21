@@ -23,6 +23,20 @@ find_package(ROOT REQUIRED)
 
 file(GLOB SPINE_SOURCES src/*.cc)
 
+# duneanaobj before v04_01_00 has no ROOT dictionaries for its SAND classes caf::SRGRAIN,
+# caf::SRTracker and caf::SREcal. Branching a StandardRecord then aborts in ROOT whenever the
+# input CAF was itself written through that dictionary, as a skim would be. Build them here.
+if(duneanaobj_VERSION VERSION_LESS 4.1)
+    add_library(sand_dict SHARED)
+    target_link_libraries(sand_dict PUBLIC duneanaobj::StandardRecord ROOT::Core)
+    # rootcling looks for the header through the module's own include directories.
+    get_target_property(DUNEANAOBJ_INCLUDE_DIRS duneanaobj::StandardRecord INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(sand_dict PRIVATE ${DUNEANAOBJ_INCLUDE_DIRS})
+    ROOT_GENERATE_DICTIONARY(G__sand_classes duneanaobj/StandardRecord/SRSAND.h
+        MODULE sand_dict
+        LINKDEF ${CMAKE_CURRENT_SOURCE_DIR}/dict/sand_classes.xml)
+endif()
+
 # Helper function to ensure all includes and libraries are correctly attached to targets
 function(link_dlp_dependencies target_name)
     target_include_directories(${target_name} PUBLIC
@@ -33,6 +47,9 @@ function(link_dlp_dependencies target_name)
         SpineReader::spine_reader
         duneanaobj::StandardRecord
     )
+    if(TARGET sand_dict)
+        target_link_libraries(${target_name} PRIVATE sand_dict)
+    endif()
 endfunction()
 
 # Libraries
