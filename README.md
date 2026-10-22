@@ -33,10 +33,11 @@ source setup.sh
 ```
 
 ### 2. Build spine-reader
-SPINE HDF5 files are read with spine-reader, a shared C++17 library that reads both SPINE HDF5 layouts (V1 and V2). It needs only the HDF5 C library, so the UPS `hdf5` product that `setup.sh` sets up works as is:
+SPINE HDF5 files are read with [spine-reader](https://github.com/DeepLearnPhysics/spine-reader), a shared C++17 library that reads both SPINE HDF5 layouts (V1 and V2). It needs only the HDF5 C library, so the UPS `hdf5` product that `setup.sh` sets up works as is:
 
 ```bash
-cmake -S /path/to/spine-reader -B spine-reader-build -DHDF5_ROOT=$HDF5_FQ_DIR -DCMAKE_INSTALL_PREFIX=$PWD/spine-reader-install -DSPINE_READER_BUILD_TESTS=OFF
+git clone https://github.com/DeepLearnPhysics/spine-reader.git
+cmake -S spine-reader -B spine-reader-build -DHDF5_ROOT=$HDF5_FQ_DIR -DCMAKE_INSTALL_PREFIX=$PWD/spine-reader-install -DSPINE_READER_BUILD_TESTS=OFF
 cmake --build spine-reader-build -j8 && cmake --install spine-reader-build
 ```
 
