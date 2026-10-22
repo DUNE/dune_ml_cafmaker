@@ -1,0 +1,7 @@
+<!-- ROOT dictionaries for the SAND classes that duneanaobj before v04_01_00 lacks.
+     Versions match duneanaobj v04_01_00's classes_def.xml. -->
+<lcgdict>
+  <class name="caf::SRGRAIN" ClassVersion="10"/>
+  <class name="caf::SRTracker" ClassVersion="10"/>
+  <class name="caf::SREcal" ClassVersion="10"/>
+</lcgdict>
