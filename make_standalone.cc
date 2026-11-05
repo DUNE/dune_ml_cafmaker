@@ -66,6 +66,9 @@ int main(int argc, char const *argv[])
             return 1;
         }
         std::cout << "Opened file: " << argv[n] << std::endl;
+        // spine-reader only reports the model fields the file lacks (they keep SPINE's
+        // defaults, which is what reaches the CAF): print the report so that it is in the log.
+        std::cout << file->schema_report().summary();
         std::cout << "Found " << file->num_events() << " events. Starting event loop..." << std::endl;
 
         for(uint64_t i_evt = 0; i_evt < file->num_events(); ++i_evt)

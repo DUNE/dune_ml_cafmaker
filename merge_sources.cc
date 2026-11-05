@@ -3,6 +3,7 @@
  * @brief This file contains the main function for merging the outputs of the
  * standard reconstruction pathway with the SPINE reconstruction.
  */
+#include <algorithm>
 #include <iostream>
 #include <vector>
 #include <tuple>
@@ -96,6 +97,15 @@ int main(int argc, char const * argv[])
     {
         LOG_CRITICAL(e.what() << std::endl);
         return 1;
+    }
+    // spine-reader only reports the model fields the file lacks (they keep SPINE's defaults,
+    // which is what reaches the CAF): log the report, as a warning when a product lacks fields.
+    {
+        const spine::SchemaReport & report = input_h5->schema_report();
+        const bool lacking = std::any_of(report.products.begin(), report.products.end(),
+                                         [](const spine::ProductReport & p) { return !p.complete(); });
+        if(lacking) LOG_WARN(report.summary());
+        else LOG_INFO(report.summary());
     }
 
     TFile *input_caf = TFile::Open(argv[2], "read");
