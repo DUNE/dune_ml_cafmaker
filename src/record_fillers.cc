@@ -1,31 +1,29 @@
 /**
  * @file record_fillers.cc
  * @brief Implementation of various functions for filling the SPINE
- * reconstruction output objects for use within the DUNE CAF files.
+ * reconstruction output objects, read with spine-reader, for use within the
+ * DUNE CAF files.
  */
 #include <vector>
 #include <ctype.h>
-#include "H5Cpp.h"
 
 #include "record_fillers.h"
-#include "event.h"
-#include "reco_interaction.h"
-#include "reco_particle.h"
-#include "true_interaction.h"
-#include "true_particle.h"
 
 #include "duneanaobj/StandardRecord/StandardRecord.h"
 #include "logger.h"
 
-caf::SRTrueParticle fill_truth_particle(dlp::types::TruthParticle &p, uint64_t offset)
+// SPINE stores energies in MeV and momenta in MeV/c; StandardRecord wants GeV and GeV/c.
+constexpr double kMeVToGeV = 1e-3;
+
+caf::SRTrueParticle fill_truth_particle(const spine::TruthParticle &p, uint64_t offset)
 {
     caf::SRTrueParticle part;
     part.pdg = p.pdg_code;
     // SRLorentzVector has E, px, py, pz members
-    part.p.E = p.energy_init;
-    part.p.px = p.momentum[0];
-    part.p.py = p.momentum[1];
-    part.p.pz = p.momentum[2];
+    part.p.E = p.energy_init * kMeVToGeV;
+    part.p.px = p.momentum[0] * kMeVToGeV;
+    part.p.py = p.momentum[1] * kMeVToGeV;
+    part.p.pz = p.momentum[2] * kMeVToGeV;
     
     // SRTrueParticle has start_pos and end_pos
     part.start_pos = caf::SRVector3D(p.position[0], p.position[1], p.position[2]);
@@ -36,16 +34,13 @@ caf::SRTrueParticle fill_truth_particle(dlp::types::TruthParticle &p, uint64_t o
     return part;
 }
 
-caf::SRRecoParticle fill_particle(dlp::types::RecoParticle &p, const std::map<int64_t, caf::TrueParticleID>& match_map, uint64_t offset)
+caf::SRRecoParticle fill_particle(const spine::RecoParticle &p, const std::map<int64_t, caf::TrueParticleID>& match_map, uint64_t offset)
 {
-    p.match_ids.reset(&p.match_ids_handle);
-    p.match_overlaps.reset(&p.match_overlaps_handle);
-
     caf::SRRecoParticle part;
     part.primary = p.is_primary;
     part.pdg = p.pdg_code;
-    part.E = p.ke; 
-    part.p = caf::SRVector3D(p.momentum[0], p.momentum[1], p.momentum[2]);
+    part.E = p.ke * kMeVToGeV;
+    part.p = caf::SRVector3D(p.momentum[0] * kMeVToGeV, p.momentum[1] * kMeVToGeV, p.momentum[2] * kMeVToGeV);
     part.start = caf::SRVector3D(p.start_point[0], p.start_point[1], p.start_point[2]);
     part.end = caf::SRVector3D(p.end_point[0], p.end_point[1], p.end_point[2]);
     part.contained = p.is_contained;
@@ -70,18 +65,16 @@ caf::SRRecoParticle fill_particle(dlp::types::RecoParticle &p, const std::map<in
     return part;
 }
 
-caf::SRTrueInteraction fill_truth_interaction(dlp::types::TruthInteraction &in, std::vector<caf::SRTrueParticle> &particles, uint64_t offset)
+caf::SRTrueInteraction fill_truth_interaction(const spine::TruthInteraction &in, std::vector<caf::SRTrueParticle> &particles, uint64_t offset)
 {
-    in.particle_ids.reset(&in.particle_ids_handle);
-
     LOG_DEBUG("Filling truth interaction ID: " << in.id << ", PDG: " << in.pdg_code << ", E: " << in.energy_init << " MeV" << std::endl);
 
     caf::SRTrueInteraction ret;
     ret.id = in.id;
     ret.pdg = in.pdg_code;
-    ret.E = in.energy_init;
+    ret.E = in.energy_init * kMeVToGeV;
     ret.vtx = caf::SRVector3D(in.vertex[0], in.vertex[1], in.vertex[2]);
-    ret.momentum = caf::SRVector3D(in.momentum[0], in.momentum[1], in.momentum[2]);
+    ret.momentum = caf::SRVector3D(in.momentum[0] * kMeVToGeV, in.momentum[1] * kMeVToGeV, in.momentum[2] * kMeVToGeV);
     
     LOG_DEBUG("Interaction " << in.id << " has " << in.particle_ids.size() << " particles." << std::endl);
     for(int64_t id : in.particle_ids) {
@@ -99,12 +92,8 @@ caf::SRTrueInteraction fill_truth_interaction(dlp::types::TruthInteraction &in, 
     return ret;
 }
 
-caf::SRInteraction fill_interaction(dlp::types::RecoInteraction &in, std::vector<caf::SRRecoParticle> &particles, const std::map<int64_t, int>& match_map, uint64_t offset)
+caf::SRInteraction fill_interaction(const spine::RecoInteraction &in, std::vector<caf::SRRecoParticle> &particles, const std::map<int64_t, int>& match_map, uint64_t offset)
 {
-    in.particle_ids.reset(&in.particle_ids_handle);
-    in.match_ids.reset(&in.match_ids_handle);
-    in.match_overlaps.reset(&in.match_overlaps_handle);
-
     LOG_DEBUG("Filling reco interaction ID: " << in.id << " with " << in.particle_ids.size() << " particles." << std::endl);
 
     caf::SRInteraction ret;
@@ -136,28 +125,28 @@ caf::SRInteraction fill_interaction(dlp::types::RecoInteraction &in, std::vector
     return ret;
 }
 
-void package_event(caf::StandardRecord * rec, H5::H5File & file, dlp::types::Event & evt, uint64_t offset)
+void package_event(caf::StandardRecord * rec, const spine::Event & evt, uint64_t offset)
 {
     std::map<int64_t, caf::TrueParticleID> hdf5_part_to_caf_id;
     std::map<int64_t, int> hdf5_ixn_to_caf_idx;
 
     #ifdef MC_NOT_DATA
     LOG_DEBUG("Getting truth particles..." << std::endl);
-    std::vector<dlp::types::TruthParticle> true_particles(get_product<dlp::types::TruthParticle>(file, evt));
+    const std::vector<spine::TruthParticle>& true_particles = evt.truth_particles();
     LOG_DEBUG("Found " << true_particles.size() << " truth particles." << std::endl);
     std::vector<caf::SRTrueParticle> caf_true_particles;
-    for(dlp::types::TruthParticle &p : true_particles)
+    for(const spine::TruthParticle &p : true_particles)
     {
         LOG_DEBUG("TruthParticle PDG: " << p.pdg_code << ", Energy: " << p.energy_init << " MeV, ID: " << p.id << std::endl);
         caf_true_particles.push_back(fill_truth_particle(p, offset));
     }
 
     LOG_DEBUG("Getting truth interactions..." << std::endl);
-    std::vector<dlp::types::TruthInteraction> true_interactions(get_product<dlp::types::TruthInteraction>(file, evt));
+    const std::vector<spine::TruthInteraction>& true_interactions = evt.truth_interactions();
     LOG_DEBUG("Found " << true_interactions.size() << " truth interactions." << std::endl);
     
     if (rec->mc.nu.empty()) {
-        for(dlp::types::TruthInteraction &i : true_interactions)
+        for(const spine::TruthInteraction &i : true_interactions)
             rec->mc.nu.push_back(fill_truth_interaction(i, caf_true_particles, offset));
         rec->mc.nnu = rec->mc.nu.size();
     }
@@ -212,7 +201,6 @@ void package_event(caf::StandardRecord * rec, H5::H5File & file, dlp::types::Eve
     // Map HDF5 TruthInteraction ID to valid CAF index
     for (auto& ixn : true_interactions) {
         int matched_caf_ixn = -1;
-        ixn.particle_ids.reset(&ixn.particle_ids_handle);
         for(size_t i = 0; i < ixn.particle_ids.size(); i++) {
             int64_t part_id = ixn.particle_ids[i];
             if (hdf5_part_to_caf_id.count(part_id) && hdf5_part_to_caf_id[part_id].ixn != -1) {
@@ -227,17 +215,17 @@ void package_event(caf::StandardRecord * rec, H5::H5File & file, dlp::types::Eve
     #endif
 
     LOG_DEBUG("Getting reco particles..." << std::endl);
-    std::vector<dlp::types::RecoParticle> reco_particles(get_product<dlp::types::RecoParticle>(file, evt));
+    const std::vector<spine::RecoParticle>& reco_particles = evt.reco_particles();
     LOG_DEBUG("Found " << reco_particles.size() << " reco particles." << std::endl);
     std::vector<caf::SRRecoParticle> caf_reco_particles;
-    for(dlp::types::RecoParticle &p : reco_particles)
+    for(const spine::RecoParticle &p : reco_particles)
         caf_reco_particles.push_back(fill_particle(p, hdf5_part_to_caf_id, offset));
 
     LOG_DEBUG("Getting reco interactions..." << std::endl);
-    std::vector<dlp::types::RecoInteraction> reco_interactions(get_product<dlp::types::RecoInteraction>(file, evt));
+    const std::vector<spine::RecoInteraction>& reco_interactions = evt.reco_interactions();
     
     rec->common.ixn.dlp.clear();
-    for(dlp::types::RecoInteraction &i : reco_interactions)
+    for(const spine::RecoInteraction &i : reco_interactions)
         rec->common.ixn.dlp.push_back(fill_interaction(i, caf_reco_particles, hdf5_ixn_to_caf_idx, offset));
     rec->common.ixn.ndlp = rec->common.ixn.dlp.size();
 }
